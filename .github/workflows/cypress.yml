@@ -18,9 +18,22 @@ jobs:
         with:
           node-version: '18'
 
-      - name: Install dependencies
+      - name: Cache node modules
+        uses: actions/cache@v4
+        with:
+          path: ~/.npm
+          key: ${{ runner.os }}-node-${{ hashFiles('**/package-lock.json') }}
+          restore-keys: |
+            ${{ runner.os }}-node-
+
+      - name: Install dependencies (prefer npm ci, fallback to npm install)
         run: |
-          npm ci
+          if [ -f package-lock.json ]; then
+            npm ci
+          else
+            echo "package-lock.json not found, running npm install to generate lockfile";
+            npm install
+          fi
 
       - name: Start Xvfb (for Cypress GUI deps)
         run: |
@@ -33,23 +46,13 @@ jobs:
         run: |
           npx cypress run --spec "cypress/e2e/prova-final.cy.js"
 
-      - name: Upload Cypress screenshots
+      - name: Upload artifacts (screenshots, videos, reports)
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: cypress-screenshots
-          path: cypress/screenshots || cypress/videos || cypress/reports || cypress/results || mochawesome-report
-
-      - name: Upload Cypress videos
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: cypress-videos
-          path: cypress/videos
-
-      - name: Upload mochawesome report
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: mochawesome-report
-          path: cypress/reports || mochawesome-report
+          name: cypress-artifacts
+          path: |
+            cypress/screenshots
+            cypress/videos
+            cypress/reports
+            mochawesome-report
