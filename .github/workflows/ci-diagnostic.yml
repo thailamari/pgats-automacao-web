@@ -1,0 +1,34 @@
+name: CI Diagnostic - lockfile
+
+on:
+  push:
+    branches: [ thaila ]
+
+jobs:
+  diag:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Show git and repo files
+        run: |
+          echo "--- branch ---"
+          git rev-parse --abbrev-ref HEAD || true
+          echo "--- repo root files ---"
+          ls -la || true
+          echo "--- head of package-lock.json (if present) ---"
+          if [ -f package-lock.json ]; then head -n 40 package-lock.json || true; else echo "NO package-lock.json in runner"; fi
+
+      - name: Node & npm versions
+        run: |
+          node -v || true
+          npm -v || true
+
+      - name: Try npm ci (capture output)
+        run: |
+          echo "Running npm ci (will fail if no lockfile)"
+          set -o pipefail || true
+          npm ci --prefer-offline --no-audit --no-fund 2>&1 || true
