@@ -12,6 +12,8 @@ jobs:
     steps:
       - name: Checkout repo
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
@@ -26,12 +28,23 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-node-
 
-      - name: Install dependencies (prefer npm ci, fallback to npm install)
+      - name: Diagnostics - node/npm and repo files
+        run: |
+          echo "--- node & npm versions ---"
+          node -v || true
+          npm -v || true
+          echo "--- repo root files ---"
+          ls -la || true
+          echo "--- head of package-lock.json (if present) ---"
+          if [ -f package-lock.json ]; then head -n 40 package-lock.json || true; else echo "no package-lock.json"; fi
+
+      - name: Install dependencies (try npm ci, fallback to npm install)
         run: |
           if [ -f package-lock.json ]; then
-            npm ci
+            echo "package-lock.json found - running npm ci"
+            npm ci || (echo "npm ci failed, falling back to npm install" && npm install)
           else
-            echo "package-lock.json not found, running npm install to generate lockfile";
+            echo "package-lock.json not found - running npm install"
             npm install
           fi
 
