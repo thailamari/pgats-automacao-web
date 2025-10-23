@@ -1,48 +1,85 @@
-name: CI - Cypress Tests (minimal)
+name: CI - Cypress Tests (fresh)
 
 on:
-  push:
-    branches: [ main, thaila ]
-  pull_request:
-    branches: [ main, thaila ]
+	push:
+		branches: [ main, thaila ]
+	pull_request:
+		branches: [ main, thaila ]
 
 jobs:
-  cypress-run:
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
+	test:
+		runs-on: ubuntu-latest
+		steps:
+			- name: Checkout
+				uses: actions/checkout@v4
+				with:
+					fetch-depth: 0
 
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: '18'
+			- name: Setup Node.js
+				uses: actions/setup-node@v4
+				with:
+					node-version: '18'
 
-      - name: Install dependencies (force npm install)
-        run: |
-          echo "Running npm install to ensure dependencies are available"
-          npm install --no-audit --no-fund
+			- name: Cache npm
+				uses: actions/cache@v4
+				with:
+					path: ~/.npm
+					key: ${{ runner.os }}-node-${{ hashFiles('**/package-lock.json') }}
+					restore-keys: |
+						${{ runner.os }}-node-
 
-      - name: Start Xvfb
-        run: |
-          sudo Xvfb :99 -screen 0 1280x1024x24 &
-          export DISPLAY=:99
+			- name: Diagnostic (node/npm + lockfile)
+				run: |
+					node -v || true
+					npm -v || true
+					echo "Has lockfile: $( [ -f package-lock.json ] && echo yes || echo no )"
 
-      - name: Run Cypress tests
-        env:
-          CI: true
-        run: |
-          npx cypress run --spec "cypress/e2e/prova-final.cy.js"
+			- name: Install dependencies (prefer npm ci)
+				run: |
+					set -o pipefail || true
+					echo "=== START INSTALL LOG ===" > install.log
+					if [ -f package-lock.json ]; then
+						echo "package-lock.json found, trying npm ci" | tee -a install.log
+						if npm ci --prefer-offline --no-audit --no-fund 2>&1 | tee -a install.log; then
+							echo "npm ci succeeded" | tee -a install.log
+						else
+							echo "npm ci failed, falling back to npm install" | tee -a install.log
+							npm install --no-audit --no-fund 2>&1 | tee -a install.log
+						fi
+					else
+						echo "No package-lock.json, running npm install" | tee -a install.log
+						npm install --no-audit --no-fund 2>&1 | tee -a install.log
+					fi
 
-      - name: Upload artifacts
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: cypress-artifacts
-          path: |
-            cypress/screenshots
-            cypress/videos
-            cypress/reports
-            mochawesome-report
+			- name: Upload install log
+				uses: actions/upload-artifact@v4
+				with:
+					name: install-log
+					path: install.log
+
+			- name: Install Cypress binary
+				run: |
+					npx cypress install
+
+			- name: Start virtual display
+				run: |
+					sudo Xvfb :99 -screen 0 1280x1024x24 &
+					export DISPLAY=:99
+
+			- name: Run Cypress spec
+				env:
+					CI: true
+				run: |
+					npx cypress run --spec "cypress/e2e/prova-final.cy.js"
+
+			- name: Upload Cypress artifacts
+				if: always()
+				uses: actions/upload-artifact@v4
+				with:
+					name: cypress-artifacts
+					path: |
+						cypress/screenshots
+						cypress/videos
+						cypress/reports
+						mochawesome-report
+
