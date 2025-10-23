@@ -1,4 +1,4 @@
-name: CI - Cypress Tests (robust)
+name: CI - Cypress Tests (minimal)
 
 on:
   push:
@@ -10,7 +10,7 @@ jobs:
   cypress-run:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout repo
+      - name: Checkout
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
@@ -20,42 +20,10 @@ jobs:
         with:
           node-version: '18'
 
-      - name: Cache npm
-        uses: actions/cache@v4
-        with:
-          path: ~/.npm
-          key: ${{ runner.os }}-node-${{ hashFiles('**/package-lock.json') }}
-          restore-keys: |
-            ${{ runner.os }}-node-
-
-      - name: Diagnostics
+      - name: Install dependencies (force npm install)
         run: |
-          echo "--- node & npm ---"
-          node -v || true
-          npm -v || true
-          echo "--- git branch ---"
-          git rev-parse --abbrev-ref HEAD || true
-          echo "--- repo files ---"
-          ls -la || true
-          if [ -f package-lock.json ]; then echo "lockfileVersion: $(jq -r '.lockfileVersion' package-lock.json 2>/dev/null || echo unknown)"; else echo "no package-lock.json"; fi
-
-      - name: Try npm ci (capture logs)
-        run: |
-          set -o pipefail || true
-          echo "=== npm ci start ===" > install.log
-          if npm ci --prefer-offline --no-audit --no-fund 2>&1 | tee -a install.log; then
-            echo "npm ci succeeded" | tee -a install.log
-          else
-            echo "npm ci failed" | tee -a install.log
-            echo "Attempting npm install..." | tee -a install.log
-            npm install --no-audit --no-fund 2>&1 | tee -a install.log || true
-          fi
-
-      - name: Upload install log
-        uses: actions/upload-artifact@v4
-        with:
-          name: install-log
-          path: install.log
+          echo "Running npm install to ensure dependencies are available"
+          npm install --no-audit --no-fund
 
       - name: Start Xvfb
         run: |
@@ -68,7 +36,7 @@ jobs:
         run: |
           npx cypress run --spec "cypress/e2e/prova-final.cy.js"
 
-      - name: Upload artifacts (screenshots, videos, reports)
+      - name: Upload artifacts
         if: always()
         uses: actions/upload-artifact@v4
         with:
