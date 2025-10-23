@@ -38,15 +38,10 @@ jobs:
           echo "--- head of package-lock.json (if present) ---"
           if [ -f package-lock.json ]; then head -n 40 package-lock.json || true; else echo "no package-lock.json"; fi
 
-      - name: Install dependencies (try npm ci, fallback to npm install)
+      - name: Install dependencies (use npm install to avoid npm ci issues)
         run: |
-          if [ -f package-lock.json ]; then
-            echo "package-lock.json found - running npm ci"
-            npm ci || (echo "npm ci failed, falling back to npm install" && npm install)
-          else
-            echo "package-lock.json not found - running npm install"
-            npm install
-          fi
+          echo "Running npm install"
+          npm install
 
       - name: Start Xvfb (for Cypress GUI deps)
         run: |
