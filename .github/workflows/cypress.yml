@@ -1,4 +1,4 @@
-name: CI - Cypress Tests (minimal)
+name: CI - Cypress Tests (robust-final)
 
 on:
 	push:
@@ -7,7 +7,7 @@ on:
 		branches: [ main, thaila ]
 
 jobs:
-	test:
+	cypress-run:
 		runs-on: ubuntu-latest
 		steps:
 			- name: Checkout
@@ -20,10 +20,36 @@ jobs:
 				with:
 					node-version: '18'
 
-			- name: Install dependencies (npm install)
+			- name: Cache npm
+				uses: actions/cache@v4
+				with:
+					path: ~/.npm
+					key: ${{ runner.os }}-node-${{ hashFiles('**/package-lock.json') }}
+					restore-keys: |
+						${{ runner.os }}-node-
+
+			- name: Diagnostics
 				run: |
+					echo "node: $(node -v)"
+					echo "npm: $(npm -v)"
+					echo "has package-lock: $( [ -f package-lock.json ] && echo yes || echo no )"
+
+			- name: Install dependencies (prefer npm ci, fallback to npm install)
+				run: |
+					set -o pipefail || true
 					echo "=== START INSTALL LOG ===" > install.log
-					npm install --no-audit --no-fund 2>&1 | tee -a install.log
+					if [ -f package-lock.json ]; then
+						echo "package-lock.json present; trying npm ci" | tee -a install.log
+						if npm ci --prefer-offline --no-audit --no-fund 2>&1 | tee -a install.log; then
+							echo "npm ci succeeded" | tee -a install.log
+						else
+							echo "npm ci failed; running npm install" | tee -a install.log
+							npm install --no-audit --no-fund 2>&1 | tee -a install.log
+						fi
+					else
+						echo "no package-lock.json; running npm install" | tee -a install.log
+						npm install --no-audit --no-fund 2>&1 | tee -a install.log
+					fi
 
 			- name: Upload install log
 				uses: actions/upload-artifact@v4
@@ -33,14 +59,14 @@ jobs:
 
 			- name: Install Cypress binary
 				run: |
-					npx cypress install
+					npx cypress install --no-sandbox
 
 			- name: Start virtual display
 				run: |
 					sudo Xvfb :99 -screen 0 1280x1024x24 &
 					export DISPLAY=:99
 
-			- name: Run Cypress spec
+			- name: Run Cypress tests
 				env:
 					CI: true
 				run: |
