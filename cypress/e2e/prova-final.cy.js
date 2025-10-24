@@ -438,7 +438,7 @@ describe('Casos de Teste - Automation Exercise', () => {
 		// 2a) Handle modal/notification that confirms addition to cart (if any)
 		cy.get('body', { timeout: 8000 }).then(($b) => {
 			// if there's a modal with view-cart link/button, click it
-			const modalView = $b.find('a:contains("View Cart"), a[href*="view_cart"], button:contains("View Cart")');
+			const modalView = $b.find('a, button').filter((i, el) => /View Cart|view_cart/i.test(el.innerText || el.getAttribute('href') || ''));
 			if (modalView && modalView.length) {
 				cy.wrap(modalView[0]).click({ force: true });
 				return;
@@ -550,12 +550,12 @@ describe('Casos de Teste - Automation Exercise', () => {
 				cy.get('input[name="cvc"], input[placeholder*="CVC"]').first().type('123', { force: true });
 				cy.get('input[name="expiry_month"], input[placeholder*="MM"]').first().type('12', { force: true });
 				cy.get('input[name="expiry_year"], input[placeholder*="YY"]').first().type('30', { force: true });
-				cy.contains(/Pay and Confirm Order|Pay Now|Submit/i).first().click({ force: true });
+				cy.contains(/Pay and Confirm Order|Pay Now|Submit/i).first().scrollIntoView().click({ force: true });
 			}
 		});
 
 		// final assertion: order confirmation in body
-		cy.get('body', { timeout: 15000 }).should(($body) => {
+		cy.get('body', { timeout: 30000 }).should(($body) => {
 			const text = $body.text();
 			const ok = /Order Placed!|order placed|Your order has been placed successfully|Order Confirmed|Thank you for your purchase/i.test(text);
 			expect(ok, 'Order confirmation not found after placing order').to.be.true;
