@@ -1,15 +1,12 @@
 name: 🧪 Cypress E2E Tests (AutomationExercise)
 
 on:
-  # Dispara a pipeline em todos os pushes para o branch principal (main)
   push:
     branches: [ main, master ]
-  # Opcional: Permite rodar manualmente através da aba "Actions"
   workflow_dispatch:
 
 jobs:
   cypress-run:
-    # Rodar no ambiente Linux mais recente
     runs-on: ubuntu-latest
     
     steps:
@@ -17,14 +14,13 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      # 2. Configurar Node.js (se for preciso para instalação)
+      # 2. Configurar Node.js
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '20' # Use uma versão LTS estável
+          node-version: '20'
 
-      # 3. Cache de dependências (Otimização de velocidade)
-      # O cypress-io/github-action geralmente faz o cache do npm, mas explicitamente é bom:
+      # 3. Cache de dependências
       - name: Cache dependencies
         id: cache
         uses: actions/cache@v4
@@ -34,31 +30,24 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-npm-
 
+      # 4. Instalar dependências
       - name: Instalar dependências
         if: steps.cache.outputs.cache-hit != 'true'
-        run: npm install # Ou yarn install, dependendo do seu gerenciador
+        run: npm install
 
-      # 4. Rodar Testes com Cypress GitHub Action
+      # 5. Rodar Testes com Cypress GitHub Action
       - name: Rodar Testes E2E Específicos
         uses: cypress-io/github-action@v6
         with:
-          # Para um site externo, não precisamos de 'start' ou 'build'
-          # Base URL é a URL onde o teste irá começar a navegação (cy.visit)
-          # Definir a baseURL no cypress.config.js é melhor prática, mas passamos aqui por segurança.
-          browser: chrome # Roda no Chrome, mais próximo do usuário final.
+          browser: chrome
+          spec: cypress/e2e/prova-final.cy.js
+        env: # <--- ADICIONAMOS O BLOCO ENV AQUI
+          # Ação correta para resolver o erro do sandbox no ambiente CI
+          CYPRESS_NO_BROWSER_SANDBOX: 1 
+          # Opcional: Para aumentar o timeout de requisição em ambientes CI
+          CYPRESS_REQUES_TIMEOUT: 15000 
           
-          # Filtragem de testes (Assumindo que seus testes estão em 'cypress/e2e/prova-final.cy.js')
-          # Usamos o 'spec' para rodar apenas o arquivo de teste relevante.
-          spec: cypress/e2e/prova-final.cy.js 
-          
-          # Se você usou o plugin cypress-grep para tags, você usaria:
-          # run: npx cypress run --env grepTags="@smoke"
-          
-          # Para focar a execução apenas nos testes que você listou, o ideal é
-          # colocar os IDs dos testes (1,2,3,4,5,6,8,9,10,15) nos títulos de 'it' e usar o 'grep'
-          # Como todos os seus testes estão no mesmo arquivo, a filtragem por spec é suficiente.
-          
-      # 5. Opcional: Upload de Artefatos (Screenshots e Vídeos em Caso de Falha)
+      # 6. Opcional: Upload de Artefatos
       - uses: actions/upload-artifact@v4
         if: failure()
         with:
@@ -66,4 +55,3 @@ jobs:
           path: |
             cypress/screenshots
             cypress/videos
-            # cypress/results # se você usa um reporter como mochawesome
