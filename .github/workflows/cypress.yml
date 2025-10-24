@@ -1,4 +1,4 @@
-name: CI - Cypress Tests (fresh)
+name: CI - Cypress Tests (minimal)
 
 on:
 	push:
@@ -20,36 +20,10 @@ jobs:
 				with:
 					node-version: '18'
 
-			- name: Cache npm
-				uses: actions/cache@v4
-				with:
-					path: ~/.npm
-					key: ${{ runner.os }}-node-${{ hashFiles('**/package-lock.json') }}
-					restore-keys: |
-						${{ runner.os }}-node-
-
-			- name: Diagnostic (node/npm + lockfile)
+			- name: Install dependencies (npm install)
 				run: |
-					node -v || true
-					npm -v || true
-					echo "Has lockfile: $( [ -f package-lock.json ] && echo yes || echo no )"
-
-			- name: Install dependencies (prefer npm ci)
-				run: |
-					set -o pipefail || true
 					echo "=== START INSTALL LOG ===" > install.log
-					if [ -f package-lock.json ]; then
-						echo "package-lock.json found, trying npm ci" | tee -a install.log
-						if npm ci --prefer-offline --no-audit --no-fund 2>&1 | tee -a install.log; then
-							echo "npm ci succeeded" | tee -a install.log
-						else
-							echo "npm ci failed, falling back to npm install" | tee -a install.log
-							npm install --no-audit --no-fund 2>&1 | tee -a install.log
-						fi
-					else
-						echo "No package-lock.json, running npm install" | tee -a install.log
-						npm install --no-audit --no-fund 2>&1 | tee -a install.log
-					fi
+					npm install --no-audit --no-fund 2>&1 | tee -a install.log
 
 			- name: Upload install log
 				uses: actions/upload-artifact@v4
