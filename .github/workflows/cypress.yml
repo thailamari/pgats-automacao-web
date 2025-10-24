@@ -1,85 +1,88 @@
 name: CI - Cypress Tests (robust-final)
 
 on:
-	push:
-		branches: [ main, thaila ]
-	pull_request:
-		branches: [ main, thaila ]
+  push:
+    branches:
+      - main
+      - thaila
+  pull_request:
+    branches:
+      - main
+      - thaila
 
 jobs:
-	cypress-run:
-		runs-on: ubuntu-latest
-		steps:
-			- name: Checkout
-				uses: actions/checkout@v4
-				with:
-					fetch-depth: 0
+  cypress-run:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
-			- name: Setup Node.js
-				uses: actions/setup-node@v4
-				with:
-					node-version: '18'
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
 
-			- name: Cache npm
-				uses: actions/cache@v4
-				with:
-					path: ~/.npm
-					key: ${{ runner.os }}-node-${{ hashFiles('**/package-lock.json') }}
-					restore-keys: |
-						${{ runner.os }}-node-
+      - name: Cache npm
+        uses: actions/cache@v4
+        with:
+          path: ~/.npm
+          key: ${{ runner.os }}-node-${{ hashFiles('**/package-lock.json') }}
+          restore-keys: |
+            ${{ runner.os }}-node-
 
-			- name: Diagnostics
-				run: |
-					echo "node: $(node -v)"
-					echo "npm: $(npm -v)"
-					echo "has package-lock: $( [ -f package-lock.json ] && echo yes || echo no )"
+      - name: Diagnostics
+        run: |
+          echo "node: $(node -v)"
+          echo "npm: $(npm -v)"
+          echo "has package-lock: $( [ -f package-lock.json ] && echo yes || echo no )"
 
-			- name: Install dependencies (prefer npm ci, fallback to npm install)
-				run: |
-					set -o pipefail || true
-					echo "=== START INSTALL LOG ===" > install.log
-					if [ -f package-lock.json ]; then
-						echo "package-lock.json present; trying npm ci" | tee -a install.log
-						if npm ci --prefer-offline --no-audit --no-fund 2>&1 | tee -a install.log; then
-							echo "npm ci succeeded" | tee -a install.log
-						else
-							echo "npm ci failed; running npm install" | tee -a install.log
-							npm install --no-audit --no-fund 2>&1 | tee -a install.log
-						fi
-					else
-						echo "no package-lock.json; running npm install" | tee -a install.log
-						npm install --no-audit --no-fund 2>&1 | tee -a install.log
-					fi
+      - name: Install dependencies (prefer npm ci, fallback to npm install)
+        shell: bash
+        run: |
+          set -o pipefail || true
+          echo "=== START INSTALL LOG ===" > install.log
+          if [ -f package-lock.json ]; then
+            echo "package-lock.json present; trying npm ci" | tee -a install.log
+            if npm ci --prefer-offline --no-audit --no-fund 2>&1 | tee -a install.log; then
+              echo "npm ci succeeded" | tee -a install.log
+            else
+              echo "npm ci failed; running npm install" | tee -a install.log
+              npm install --no-audit --no-fund 2>&1 | tee -a install.log
+            fi
+          else
+            echo "no package-lock.json; running npm install" | tee -a install.log
+            npm install --no-audit --no-fund 2>&1 | tee -a install.log
+          fi
 
-			- name: Upload install log
-				uses: actions/upload-artifact@v4
-				with:
-					name: install-log
-					path: install.log
+      - name: Upload install log
+        uses: actions/upload-artifact@v4
+        with:
+          name: install-log
+          path: install.log
 
-			- name: Install Cypress binary
-				run: |
-					npx cypress install --no-sandbox
+      - name: Install Cypress binary
+        run: npx cypress install --no-sandbox
 
-			- name: Start virtual display
-				run: |
-					sudo Xvfb :99 -screen 0 1280x1024x24 &
-					export DISPLAY=:99
+      - name: Start virtual display
+        run: |
+          sudo Xvfb :99 -screen 0 1280x1024x24 &
+          export DISPLAY=:99
 
-			- name: Run Cypress tests
-				env:
-					CI: true
-				run: |
-					npx cypress run --spec "cypress/e2e/prova-final.cy.js"
+      - name: Run Cypress tests
+        env:
+          CI: true
+        run: npx cypress run --spec "cypress/e2e/prova-final.cy.js"
 
-			- name: Upload Cypress artifacts
-				if: always()
-				uses: actions/upload-artifact@v4
-				with:
-					name: cypress-artifacts
-					path: |
-						cypress/screenshots
-						cypress/videos
-						cypress/reports
-						mochawesome-report
+      - name: Upload Cypress artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: cypress-artifacts
+          path: |
+            cypress/screenshots
+            cypress/videos
+            cypress/reports
+            mochawesome-report
 
