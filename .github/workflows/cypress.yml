@@ -23,16 +23,15 @@ jobs:
       - name: Instalar Dependências (npm install)
         run: npm install
 
-      # 3. Rodar Testes Puros do Cypress (Substitui a ação 'cypress-io/github-action')
-      - name: Executar Testes E2E (Script Puro)
-        # Instalamos o navegador necessário e rodamos o comando manualmente.
+      # 3. Executar Testes E2E (CORREÇÃO FINAL: Usamos 'run' puro)
+      - name: Executar Testes E2E (Comando Pós-Instalação)
         run: |
-          # Define a variável de ambiente para o Cypress: desativa o sandbox
+          # Define a variável de ambiente (export) e executa o Cypress
+          # O npx cypress run --browser chrome é executado no terminal da CI
           export CYPRESS_NO_BROWSER_SANDBOX=1
-          
-          # Executa o Cypress com o navegador Chrome e o argumento necessário
           npx cypress run --browser chrome --e2e --spec cypress/e2e/prova-final.cy.js --config-file cypress.config.js
-        # O comando 'npx cypress run' vai usar o binário instalado pelo 'npm install'
+        # A remoção do uses: cypress-io/github-action garante que o comando de instalação
+        # incorreto nunca será executado.
         
       # 4. Upload de Artefatos (MANTIDO)
       # Nota: Os artefatos podem precisar ser ajustados se o Cypress rodar em uma pasta diferente.
