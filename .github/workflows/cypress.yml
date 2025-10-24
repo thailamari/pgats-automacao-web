@@ -1,85 +1,69 @@
-name: CI - Cypress Tests (robust-final)
+name: 🧪 Cypress E2E Tests (AutomationExercise)
 
 on:
-	push:
-		branches: [ main, thaila ]
-	pull_request:
-		branches: [ main, thaila ]
+  # Dispara a pipeline em todos os pushes para o branch principal (main)
+  push:
+    branches: [ main, master ]
+  # Opcional: Permite rodar manualmente através da aba "Actions"
+  workflow_dispatch:
 
 jobs:
-	cypress-run:
-		runs-on: ubuntu-latest
-		steps:
-			- name: Checkout
-				uses: actions/checkout@v4
-				with:
-					fetch-depth: 0
+  cypress-run:
+    # Rodar no ambiente Linux mais recente
+    runs-on: ubuntu-latest
+    
+    steps:
+      # 1. Checkout do Código
+      - name: Checkout
+        uses: actions/checkout@v4
 
-			- name: Setup Node.js
-				uses: actions/setup-node@v4
-				with:
-					node-version: '18'
+      # 2. Configurar Node.js (se for preciso para instalação)
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20' # Use uma versão LTS estável
 
-			- name: Cache npm
-				uses: actions/cache@v4
-				with:
-					path: ~/.npm
-					key: ${{ runner.os }}-node-${{ hashFiles('**/package-lock.json') }}
-					restore-keys: |
-						${{ runner.os }}-node-
+      # 3. Cache de dependências (Otimização de velocidade)
+      # O cypress-io/github-action geralmente faz o cache do npm, mas explicitamente é bom:
+      - name: Cache dependencies
+        id: cache
+        uses: actions/cache@v4
+        with:
+          path: node_modules
+          key: ${{ runner.os }}-npm-${{ hashFiles('package-lock.json') }}
+          restore-keys: |
+            ${{ runner.os }}-npm-
 
-			- name: Diagnostics
-				run: |
-					echo "node: $(node -v)"
-					echo "npm: $(npm -v)"
-					echo "has package-lock: $( [ -f package-lock.json ] && echo yes || echo no )"
+      - name: Instalar dependências
+        if: steps.cache.outputs.cache-hit != 'true'
+        run: npm install # Ou yarn install, dependendo do seu gerenciador
 
-			- name: Install dependencies (prefer npm ci, fallback to npm install)
-				run: |
-					set -o pipefail || true
-					echo "=== START INSTALL LOG ===" > install.log
-					if [ -f package-lock.json ]; then
-						echo "package-lock.json present; trying npm ci" | tee -a install.log
-						if npm ci --prefer-offline --no-audit --no-fund 2>&1 | tee -a install.log; then
-							echo "npm ci succeeded" | tee -a install.log
-						else
-							echo "npm ci failed; running npm install" | tee -a install.log
-							npm install --no-audit --no-fund 2>&1 | tee -a install.log
-						fi
-					else
-						echo "no package-lock.json; running npm install" | tee -a install.log
-						npm install --no-audit --no-fund 2>&1 | tee -a install.log
-					fi
-
-			- name: Upload install log
-				uses: actions/upload-artifact@v4
-				with:
-					name: install-log
-					path: install.log
-
-			- name: Install Cypress binary
-				run: |
-					npx cypress install --no-sandbox
-
-			- name: Start virtual display
-				run: |
-					sudo Xvfb :99 -screen 0 1280x1024x24 &
-					export DISPLAY=:99
-
-			- name: Run Cypress tests
-				env:
-					CI: true
-				run: |
-					npx cypress run --spec "cypress/e2e/prova-final.cy.js"
-
-			- name: Upload Cypress artifacts
-				if: always()
-				uses: actions/upload-artifact@v4
-				with:
-					name: cypress-artifacts
-					path: |
-						cypress/screenshots
-						cypress/videos
-						cypress/reports
-						mochawesome-report
-
+      # 4. Rodar Testes com Cypress GitHub Action
+      - name: Rodar Testes E2E Específicos
+        uses: cypress-io/github-action@v6
+        with:
+          # Para um site externo, não precisamos de 'start' ou 'build'
+          # Base URL é a URL onde o teste irá começar a navegação (cy.visit)
+          # Definir a baseURL no cypress.config.js é melhor prática, mas passamos aqui por segurança.
+          browser: chrome # Roda no Chrome, mais próximo do usuário final.
+          
+          # Filtragem de testes (Assumindo que seus testes estão em 'cypress/e2e/prova-final.cy.js')
+          # Usamos o 'spec' para rodar apenas o arquivo de teste relevante.
+          spec: cypress/e2e/prova-final.cy.js 
+          
+          # Se você usou o plugin cypress-grep para tags, você usaria:
+          # run: npx cypress run --env grepTags="@smoke"
+          
+          # Para focar a execução apenas nos testes que você listou, o ideal é
+          # colocar os IDs dos testes (1,2,3,4,5,6,8,9,10,15) nos títulos de 'it' e usar o 'grep'
+          # Como todos os seus testes estão no mesmo arquivo, a filtragem por spec é suficiente.
+          
+      # 5. Opcional: Upload de Artefatos (Screenshots e Vídeos em Caso de Falha)
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: cypress-artifacts
+          path: |
+            cypress/screenshots
+            cypress/videos
+            # cypress/results # se você usa um reporter como mochawesome
