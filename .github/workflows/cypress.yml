@@ -1,4 +1,4 @@
-name: 🧪 Cypress E2E Tests (AutomationExercise)
+name: 🧪 Cypress E2E Tests (Script Puro)
 
 on:
   push:
@@ -7,53 +7,35 @@ on:
 
 jobs:
   cypress-run:
-    # Ajustamos para uma versão LTS que não tem problema de engine (Node 18)
-    runs-on: ubuntu-latest 
+    runs-on: ubuntu-latest
     
     steps:
-      - name: Checkout
+      - name: Checkout Código
         uses: actions/checkout@v4
 
-      # 2. Configurar Node.js (USAMOS VERSÃO ESTÁVEL 18 PARA EVITAR WARNS DE EBADENGINE)
-      - name: Setup Node.js
+      # 1. Configurar Node.js (Versão 18 para evitar erros de engine)
+      - name: Setup Node.js 18
         uses: actions/setup-node@v4
         with:
-          node-version: '18' 
+          node-version: '18'
 
-      # 3. Cache de dependências
-      - name: Cache dependencies
-        id: cache
-        uses: actions/cache@v4
-        with:
-          path: node_modules
-          key: ${{ runner.os }}-npm-${{ hashFiles('package-lock.json') }}
-          restore-keys: |
-            ${{ runner.os }}-npm-
-
-      # 4. Instalar dependências (MANTIDO)
-      - name: Instalar dependências
-        if: steps.cache.outputs.cache-hit != 'true'
+      # 2. Instalar dependências (Inclui o Cypress)
+      - name: Instalar Dependências (npm install)
         run: npm install
 
-      # 5. Rodar Testes com COMANDO EXPLÍCITO (RESOLVENDO O ERRO DO SANDBOX NA RAIZ)
-      - name: Rodar Testes E2E Específicos
-        uses: cypress-io/github-action@v6
-        with:
-          browser: chrome
-          # DESLIGAMOS A INSTALAÇÃO DA AÇÃO, POIS JÁ FIZEMOS COM O NPM
-          install: false
+      # 3. Rodar Testes Puros do Cypress (Substitui a ação 'cypress-io/github-action')
+      - name: Executar Testes E2E (Script Puro)
+        # Instalamos o navegador necessário e rodamos o comando manualmente.
+        run: |
+          # Define a variável de ambiente para o Cypress: desativa o sandbox
+          export CYPRESS_NO_BROWSER_SANDBOX=1
           
-          # Usamos o campo 'command' para executar a linha e injetar o --no-sandbox
-          # no processo do navegador, evitando o conflito de comandos.
-          command: npx cypress run --e2e --spec cypress/e2e/prova-final.cy.js --config-file cypress.config.js --env CYPRESS_NO_BROWSER_SANDBOX=1
+          # Executa o Cypress com o navegador Chrome e o argumento necessário
+          npx cypress run --browser chrome --e2e --spec cypress/e2e/prova-final.cy.js --config-file cypress.config.js
+        # O comando 'npx cypress run' vai usar o binário instalado pelo 'npm install'
         
-        env: 
-          # Essa variável garante que o Cypress não tenta instalar o binário de novo.
-          CYPRESS_INSTALL_BINARY: 0 
-          # Variável para o navegador rodar sem sandbox (necessário no CI)
-          CYPRESS_NO_BROWSER_SANDBOX: 1 
-          
-      # 6. Upload de Artefatos
+      # 4. Upload de Artefatos (MANTIDO)
+      # Nota: Os artefatos podem precisar ser ajustados se o Cypress rodar em uma pasta diferente.
       - uses: actions/upload-artifact@v4
         if: failure()
         with:
