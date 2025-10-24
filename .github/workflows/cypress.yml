@@ -10,44 +10,31 @@ jobs:
     runs-on: ubuntu-latest
     
     steps:
-      # 1. Checkout do Código
-      - name: Checkout
-        uses: actions/checkout@v4
+      # ... Etapas 1, 2, 3 (Checkout, Setup Node, Cache) permanecem as mesmas ...
 
-      # 2. Configurar Node.js
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: '20'
-
-      # 3. Cache de dependências
-      - name: Cache dependencies
-        id: cache
-        uses: actions/cache@v4
-        with:
-          path: node_modules
-          key: ${{ runner.os }}-npm-${{ hashFiles('package-lock.json') }}
-          restore-keys: |
-            ${{ runner.os }}-npm-
-
-      # 4. Instalar dependências
+      # 4. Instalar dependências (MANTIDO)
       - name: Instalar dependências
         if: steps.cache.outputs.cache-hit != 'true'
         run: npm install
 
-      # 5. Rodar Testes com Cypress GitHub Action
-      - name: Rodar Testes E2E Específicos
+      # 5. Rodar Testes com COMANDO EXPLICITO (SOLUÇÃO)
+      # Usamos a ação para fazer o setup do ambiente, mas definimos o comando de execução manualmente.
+      - name: Rodar Testes E2E Específicos (CORRIGIDO)
         uses: cypress-io/github-action@v6
         with:
-          browser: chrome
+          # Define a pasta onde o Cypress deve procurar as specs
           spec: cypress/e2e/prova-final.cy.js
-        env: # <--- ADICIONAMOS O BLOCO ENV AQUI
-          # Ação correta para resolver o erro do sandbox no ambiente CI
-          CYPRESS_NO_BROWSER_SANDBOX: 1 
-          # Opcional: Para aumentar o timeout de requisição em ambientes CI
-          CYPRESS_REQUES_TIMEOUT: 15000 
           
-      # 6. Opcional: Upload de Artefatos
+          # Forçamos o comando de execução, injetando o argumento --no-sandbox
+          # no comando 'cypress run' (não 'cypress install')
+          command: npx cypress run --browser chrome --e2e --spec cypress/e2e/prova-final.cy.js --config-file cypress.config.js --env CYPRESS_NO_BROWSER_SANDBOX=1
+        
+        # MANTEMOS A VARIAVEL DE AMBIENTE PARA GARANTIR
+        env:
+          CYPRESS_NO_BROWSER_SANDBOX: 1 
+          CYPRESS_REQUEST_TIMEOUT: 15000 
+          
+      # 6. Opcional: Upload de Artefatos (MANTIDO)
       - uses: actions/upload-artifact@v4
         if: failure()
         with:
